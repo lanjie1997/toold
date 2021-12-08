@@ -1,0 +1,13 @@
+.vscode
+.vscode/*
+*.exe
+*.zip
+sdk
+data
+data/*
+docs
+*.zar
+*.cp
+*.jpg
+storage
+config/config.yaml
