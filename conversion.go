@@ -243,7 +243,7 @@ ConversionToObj 返回自定义对象
 */
 func ConversionToObj(num string, v interface{}) error {
 	byt := []byte(num)
-	errs := json.Unmarshal(byt, &v)
+	errs := json.Unmarshal(byt, v)
 	if errs != nil {
 		return errs
 	}

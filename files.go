@@ -1,10 +1,13 @@
 package toold
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"os"
 	"os/exec"
 	"strings"
@@ -335,6 +338,35 @@ func FileCopy(srcName, dstName string) (written int64, err error) {
 	defer dst.Close()
 	return io.Copy(dst, src)
 }
+/*
+FileCopyFromFile file:源文件 dst:新文件
+*/
+func FileCopyFromFile(file *os.File, dstName string) (written int64, err error) {
+	//src, err := os.OpenFile(srcName, os.O_RDWR|os.O_APPEND, os.ModePerm)
+	//if err != nil {
+	//	return
+	//}
+	//defer src.Close()
+	var dst *os.File
+	//if IsFile(dstName) == true {
+	//	dst, err = os.OpenFile(dstName, os.O_RDONLY|os.O_WRONLY, os.ModePerm)
+	//} else {
+	//	dst, err = os.Create(dstName)
+	//}
+	dst, err = os.OpenFile(dstName, os.O_RDONLY|os.O_WRONLY|os.O_CREATE, os.ModePerm)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	defer dst.Close()
+
+	return io.Copy(dst, file)
+}
+
+
+
+
+
 
 /*
 GetRootDirectory 获取当前跟目录
@@ -342,4 +374,57 @@ GetRootDirectory 获取当前跟目录
 func GetRootDirectory() string {
 	path, _ := os.Getwd()
 	return path
+}
+
+/*
+	获取文件hash值
+*/
+func FileSha1(file *os.File) string {
+	_sha1 := sha1.New()
+	io.Copy(_sha1, file)
+	return hex.EncodeToString(_sha1.Sum(nil))
+}
+
+func FileSha1FromAddr(addr string)(string,error){
+	file,err := os.OpenFile(addr,os.O_RDONLY,os.ModePerm)
+	if err != nil{
+		return "",err
+	}
+	defer file.Close()
+	_sha1 := sha1.New()
+	io.Copy(_sha1, file)
+	return hex.EncodeToString(_sha1.Sum(nil)),nil
+}
+
+
+func NewFileSha1(file *multipart.FileHeader)string{
+	_sha1 := sha1.New()
+	f,err := file.Open()
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	io.Copy(_sha1, f)
+	return hex.EncodeToString(_sha1.Sum(nil))
+}
+
+/*
+	在指定文件夹查找.xlsx后缀的文件
+*/
+func FindXlsxFile(path string) (string, error) {
+	fileList, err := ioutil.ReadDir(path)
+	if err != nil {
+		return "", err
+	}
+	for _, v := range fileList {
+		if v.IsDir() {
+			continue
+		}
+		ok := strings.HasSuffix(v.Name(), ".xlsx")
+		if ok {
+			return v.Name(), nil
+		}
+	}
+	//用strings.HasSuffix(src, suffix)//判断src中是否包含 suffix结尾
+	return "", nil
 }

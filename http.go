@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -312,6 +313,74 @@ func HTTPSetHeaderRequest(method string, timeOut time.Duration, heard map[string
 		Header:   response.Header,
 	}, err
 }
+
+/*
+HTTPSetHeaderRequest 头设置请求
+*/
+func NewHTTPSetHeaderRequest(method,localIp string, timeOut time.Duration, heard map[string]string, urls string,
+	body io.Reader) (*HTTPRequestData, error) {
+	var reqest *http.Request
+	var err error
+	client := &http.Client{
+		Timeout: timeOut * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+			Dial: func(netw, addr string) (net.Conn, error) {
+				//本地地址  ipaddr是本地外网IP
+				lAddr, err := net.ResolveTCPAddr(netw, localIp+":0")
+				if err != nil {
+					return nil, err
+				}
+				//被请求的地址
+				rAddr, err := net.ResolveTCPAddr(netw, addr)
+				if err != nil {
+					return nil, err
+				}
+				conn, err := net.DialTCP(netw, lAddr,rAddr)
+				if err != nil {
+					return nil, err
+				}
+				deadline := time.Now().Add(3 * time.Second)
+				conn.SetDeadline(deadline)
+				return conn, nil
+			},
+		},
+	}
+	reqest, err = http.NewRequest(method, urls, body)
+	for keys, val := range heard {
+		reqest.Header.Set(keys, val)
+	}
+	if err != nil {
+		return nil, err
+	}
+	response, err := client.Do(reqest)
+	if err != nil {
+		return nil, err
+	}
+
+	status := response.StatusCode
+
+	byt, err := ioutil.ReadAll(response.Body)
+	defer func() {
+		response.Body.Close()
+		client.CloseIdleConnections()
+	}()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &HTTPRequestData{
+		HTTPCode: status,
+		Data:     byt,
+		Header:   response.Header,
+	}, err
+}
+
+
+
 
 /*
 HTTPSetHeadersRequest 头设置请求
